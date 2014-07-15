@@ -45,7 +45,7 @@ def get_circuit_info(ip_addr_dict):
 			if ("fileclient-" + fileclient_ip_addr in line and 
 				"BUILT" in line):
 
-				# find the circuit id and relays in the circuit
+				# find the circuit id and relays in the circuit (fileclient only)
 				try:
 					circ_id = re.search("CIRC (.+?) BUILT", line).group(1)
 					circ = re.search("~(.+?) ", line).group(1)
@@ -66,11 +66,12 @@ def get_circuit_info(ip_addr_dict):
 '''
 	Given a string in the shadow log format
 	"real_time [thread-id] virtual_time [logdomain-loglevel] [hostname-ip] [function-name] MESSAGE"
-	example: "00:00:16:020738 [thread-2] 00:20:00:450044072 [tor-message] [relay2-11.0.0.6] [scalliontor_logmsg_cb] RRCO: 11.0.0.3 -> 11.0.0.9 (2147495446 -> 10633)"
+	example: "00:00:13:149856 [thread-4] 00:15:04:750081830 [tor-message] [relay1-11.0.0.5] [scalliontor_logmsg_cb] CLIENTLOGGING: 11.0.0.3 -> 11.0.0.7 (2147515452 -> 16846)"
 
 	Returns a filtered version of the string in the format 
 	"virtual_time [hostname-ip] MESSAGE"
-	example: "00:20:00:450044072 [relay2-11.0.0.6] RRCO: 11.0.0.3 -> 11.0.0.9 (2147495446 -> 10633)"
+	example: "00:15:04:750081830 [relay1-11.0.0.5] CLIENTLOGGING: 11.0.0.3 -> 11.0.0.7 (2147515452 -> 16846)"
+
 '''
 def filter_log_message(line):
 
@@ -134,13 +135,15 @@ def get_stream_messages(ip_addr_dict, circuit_dict):
 				print_dict = {}
 				circ_id = ""
                                                                                 
-			if (record_flag == True and "RRC" in line):	
+			if (record_flag == True and "CLIENTLOGGING" in line):	
 
-				try:
-					p_relay = re.search(": (.+?) ->", line).group(1) 
+				if "->" in line:
+					p_relay = re.search("CLIENTLOGGING: (.+?) ->", line).group(1) 
 					n_relay = re.search("-> (.+?) ", line).group(1) 
-				except:
-					print "Could not find ip addresses for either p_relay or n_relay"
+				elif "<-" in line:
+					p_relay = re.search("CLIENTLOGGING: (.+?) <-", line).group(1) 
+					n_relay = re.search("<- (.+?) ", line).group(1) 
+
 
 				if p_relay in circuit_dict[circ_id] and n_relay in circuit_dict[circ_id]:
 					# find the relay id
